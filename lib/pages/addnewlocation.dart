@@ -88,7 +88,8 @@ class AddNewLocation extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 130),
-              Center(
+              Container(
+                width: double.infinity,
                 child: PrimaryButton(
                   title: 'Add Location',
                   onPressed: () {},

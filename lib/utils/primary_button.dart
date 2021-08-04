@@ -14,7 +14,7 @@ class PrimaryButton extends StatelessWidget {
         backgroundColor: MaterialStateProperty.all(Colors.black),
         foregroundColor: MaterialStateProperty.all(Colors.white),
         padding: MaterialStateProperty.all(
-          EdgeInsets.symmetric(horizontal: 130, vertical: 15),
+          EdgeInsets.symmetric(horizontal: 18, vertical: 20),
         ),
       ),
       onPressed: onPressed,

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:map_location_app/blocs/application_blocs.dart';
 import 'package:map_location_app/utils/primary_button.dart';
+import 'package:provider/provider.dart';
+import 'package:map_location_app/utils/textbox.dart';
 
 const double CAMERA_ZOOM = 16;
 const double CAMERA_TILT = 80;
@@ -15,27 +18,13 @@ class MapLocationScreen extends StatefulWidget {
 }
 
 class _MapLocationScreenState extends State<MapLocationScreen> {
-  // Completer<GoogleMapController> mapController = Completer();
-  late GoogleMapController mapController;
-  late Position currentPostion;
+  GoogleMapController? mapController;
 
-  void locatePosition() async {
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    currentPostion = position;
-
-    LatLng latLngPosition = LatLng(position.latitude, position.longitude);
-
-    CameraPosition cameraPosition =
-        new CameraPosition(target: latLngPosition, zoom: 14);
-    mapController.animateCamera(CameraUpdate.newCameraPosition(cameraPosition));
-  }
-
-  Set<Marker> markers = Set<Marker>();
+  Set<Marker> markers = {};
 
   @override
   void dispose() {
-    mapController.dispose();
+    mapController!.dispose();
     super.dispose();
   }
 
@@ -54,6 +43,8 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final applicationBloc = Provider.of<ApplicationBloc>(context);
+
     return Scaffold(
       backgroundColor: Color(0xffF4F4F4),
       appBar: AppBar(
@@ -69,68 +60,75 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
           ),
         ),
       ),
-      body: Stack(
-        children: [
-          Container(
-            height: MediaQuery.of(context).size.height,
-            width: MediaQuery.of(context).size.width,
-            child: GoogleMap(
-              initialCameraPosition: _kGooglePlex,
-              myLocationEnabled: true,
-              compassEnabled: false,
-              tiltGesturesEnabled: false,
-              mapType: MapType.normal,
-              markers: Set.from(markers),
-              onMapCreated: (GoogleMapController contoller) {
-                mapController = contoller;
-                // showPinsOnMap();
-              },
+      body: (applicationBloc.currentLocation == null)
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  Text('Loading'),
+                ],
+              ),
+            )
+          : Stack(
+              children: [
+                Container(
+                  height: MediaQuery.of(context).size.height,
+                  width: MediaQuery.of(context).size.width,
+                  child: GoogleMap(
+                    initialCameraPosition: _kGooglePlex,
+                    myLocationEnabled: false,
+                    compassEnabled: false,
+                    tiltGesturesEnabled: false,
+                    mapType: MapType.normal,
+                    markers: markers,
+                    onMapCreated: (GoogleMapController contoller) {
+                      mapController = contoller;
+                      addMarkerOnMap(applicationBloc);
+                    },
+                  ),
+                ),
+                Positioned(
+                  bottom: 100,
+                  left: 25,
+                  right: 25,
+                  child: PrimaryButton(
+                    title: 'Locate Me',
+                    onPressed: () {
+                      var cameraPosition = new CameraPosition(
+                        target: LatLng(
+                            applicationBloc.currentLocation!.latitude,
+                            applicationBloc.currentLocation!.longitude),
+                        zoom: CAMERA_ZOOM,
+                        bearing: CAMERA_BEARING,
+                        tilt: CAMERA_TILT,
+                      );
+                      mapController!.animateCamera(
+                          CameraUpdate.newCameraPosition(cameraPosition));
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-          Positioned(
-            bottom: 100,
-            left: 25,
-            right: 25,
-            child: PrimaryButton(
-              title: 'Locate Me',
-              onPressed: locatePosition,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  // void showPinsOnMap() {
-  //   setState(() {
-  //     markers.add(
-  //       Marker(
-  //         markerId: MarkerId('id-1'),
-  //         draggable: false,
-  //         position: LatLng(currentPostion.latitude, currentPostion.longitude),
-  //       ),
-  //     );
-  //   });
-  // }
-}
-
-class TextBox extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 35,
-      alignment: Alignment.centerLeft,
-      decoration: BoxDecoration(
-        color: Color(0xffF3F3F3),
-        borderRadius: BorderRadius.circular(7),
-      ),
-      child: TextField(
-        decoration: InputDecoration(
-          contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-          border: InputBorder.none,
-          hintText: 'Search',
+  void addMarkerOnMap(ApplicationBloc applicationBloc) {
+    return setState(() {
+      markers.add(
+        Marker(
+          markerId: MarkerId('id-1'),
+          position: LatLng(
+            applicationBloc.currentLocation!.latitude,
+            applicationBloc.currentLocation!.longitude,
+          ),
+          infoWindow: InfoWindow(title: 'User Location'),
         ),
-      ),
-    );
+      );
+    });
   }
 }
